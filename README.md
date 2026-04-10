@@ -11,8 +11,8 @@
 
 ---
 ## Requirement
-**Android Phone with minimum 6gb RAM**
-**Termux App - https://f-droid.org/en/packages/com.termux/**
+**Android Phone with minimum 6gb RAM** 
+**Termux App - https://fdroid.org/en/packages/com.termux/**
 **Termux X11 App - https://github.com/termux/termux-x11/releases**
 
 
@@ -52,4 +52,17 @@ curl -sL https://raw.githubusercontent.com/AbuZar-Ansarii/OpenClaudeLinux/main/o
 ## Onboarding
 ```
 openclaw onboard
+```
+## Start gateway 
+```
+openclaw gateway 
+```
+## Get gateway token
+```
+cat ~/.openclaw/openclaw.json
+```
+
+## Openclaw dashboard 
+```
+http://127.0.0.1:18789
 ```
