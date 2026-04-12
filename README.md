@@ -50,11 +50,20 @@ The setup script auto-selects **LXQt** on 2 GB RAM devices. Override with:
 
 ```bash
 bash setup.sh --de xfce4          # XFCE4 (needs 3+ GB)
+```
+```bash
 bash setup.sh --de lxqt           # LXQt  (2 GB minimum, default)
+```
+```bash
 bash setup.sh --no-ollama         # skip Ollama (saves ~500 MB)
+```
+```bash
 bash setup.sh --no-openclaw       # skip OpenClaw
+```
+```bash
 bash setup.sh --de lxqt --no-ollama --no-openclaw   # minimal install
 ```
+
 
 ---
 
@@ -62,6 +71,8 @@ bash setup.sh --de lxqt --no-ollama --no-openclaw   # minimal install
 
 ```bash
 ./start-linux.sh    # launches X11 + desktop, then open Termux:X11 app
+```
+```bash
 ./stop-linux.sh     # cleanly stops everything and removes X11 lock files
 ```
 
