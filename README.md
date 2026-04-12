@@ -40,7 +40,7 @@ Clone this repo and run the single setup script — it handles everything:
 ```bash
 termux-setup-storage
 pkg install git -y
-git clone https://github.com/AbuZar-Ansarii/OpenClaudeLinux.git
+git clone https://github.com/Mundia-Brian/OpenClaudeLinux.git
 cd OpenClaudeLinux
 chmod +x setup.sh
 bash setup.sh
