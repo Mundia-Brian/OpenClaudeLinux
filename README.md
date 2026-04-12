@@ -1,107 +1,171 @@
-# 🚀 OpenClaudeLinux (Android Running Linux, Openclaw, Claude Code, Ollama)
-### *The Ultimate AI Agent & Linux for Android (Termux)*
-*OpenClaudeLinux* is a specialized environment setup for Android users to run powerful AI tools and autonomous agents natively. This project bypasses the need for root or Shizuku, providing a streamlined, non-interactive installation for the most popular open-source AI frameworks.
+# 🚀 OpenClaudeLinux
+### *AI Agents + Linux Desktop on Android (Termux) — 2 GB RAM Minimum*
+
+Run a full Linux desktop, Claude Code, Ollama LLMs, and OpenClaw AI agent natively on Android via Termux — no root, no Shizuku, no proot required.
 
 ---
+
+## 📋 Requirements
+
+| Item | Minimum |
+|------|---------|
+| Android | 8.0+ |
+| RAM | 2 GB (LXQt auto-selected) |
+| Storage | 4 GB free |
+| App | [Termux (F-Droid)](https://f-droid.org/en/packages/com.termux/) |
+| App | [Termux:X11](https://github.com/termux/termux-x11/releases) |
+
+> ⚠️ Install both apps from the links above. **Do not use the Play Store version of Termux** — it is outdated.
+
+---
+
 ## 🛠️ Features
-- **Claude Code Ready:** Optimized environment for Anthropic's official terminal-based AI.
-- **OpenClaw Integration:** Full setup for the open-source autonomous agent.
-- **Native Ollama:** Run Large Language Models (LLMs) locally on your phone.
-- **Termux-Optimized:** Includes critical DNS and network fixes specifically for Node.js and Python on Android.
-- **X11 Re-display Fix:** `start-linux.sh` cleans stale X11 locks so the display always restores after `stop-linux.sh`.
+
+- **Native Termux** — runs directly in Termux, no proot/chroot overhead
+- **Auto RAM detection** — selects LXQt on 2 GB, allows XFCE4/MATE/KDE on higher RAM
+- **GPU acceleration** — auto-detects Adreno (Turnip) or falls back to Zink/Mesa
+- **X11 re-display fix** — stale lock files cleaned on every start/stop cycle
+- **Claude Code** — Anthropic's terminal AI, wired to local Ollama backend
+- **Ollama** — local LLM inference; lightweight models recommended for low-end devices
+- **OpenClaw** — autonomous AI agent with web dashboard
+- **PulseAudio** — audio support inside the desktop session
+- **Wine/Box64** — Windows app compatibility (via termux-linux-setup)
 
 ---
-## Requirements
-- Android phone with minimum 6 GB RAM
-- [Termux](https://f-droid.org/en/packages/com.termux/)
-- [Termux:X11](https://github.com/termux/termux-x11/releases)
 
----
-## Linux Installation
+## 🚀 Quick Install (Recommended)
+
+Clone this repo and run the single setup script — it handles everything:
 
 ```bash
 termux-setup-storage
-pkg install proot-distro termux-x11 pulseaudio -y
-proot-distro install ubuntu
-```
-
----
-## Start / Stop Linux with X11
-
-```bash
-# Clone this repo first
 pkg install git -y
 git clone https://github.com/AbuZar-Ansarii/OpenClaudeLinux.git
 cd OpenClaudeLinux
-chmod +x start-linux.sh stop-linux.sh
+chmod +x setup.sh
+bash setup.sh
 ```
 
-**Start Linux (launches X11 + proot Ubuntu):**
+The setup script auto-selects **LXQt** on 2 GB RAM devices. Override with:
+
 ```bash
-./start-linux.sh
+bash setup.sh --de xfce4          # XFCE4 (needs 3+ GB)
+bash setup.sh --de lxqt           # LXQt  (2 GB minimum, default)
+bash setup.sh --no-ollama         # skip Ollama (saves ~500 MB)
+bash setup.sh --no-openclaw       # skip OpenClaw
+bash setup.sh --de lxqt --no-ollama --no-openclaw   # minimal install
 ```
-
-**Stop Linux (cleanly kills X11 and removes stale locks):**
-```bash
-./stop-linux.sh
-```
-
-> ⚠️ Always use `./stop-linux.sh` before closing Termux:X11 to prevent stale lock files that block X11 from restarting.
 
 ---
-## Install and Setup Ollama
+
+## 🖥️ Start / Stop Desktop
 
 ```bash
-pkg install ollama -y
+./start-linux.sh    # launches X11 + desktop, then open Termux:X11 app
+./stop-linux.sh     # cleanly stops everything and removes X11 lock files
+```
+
+> ⚠️ Always use `./stop-linux.sh` to stop — never just close Termux:X11. Closing without stopping leaves stale `/tmp/.X0-lock` files that prevent X11 from restarting.
+
+---
+
+## 🤖 Ollama — Local LLMs
+
+```bash
 ollama serve &
 ```
 
----
-## Install Claude Code
+**Recommended models by RAM:**
 
-```bash
-pkg update -y && pkg upgrade -y
-pkg install git nodejs npm -y
-npm install -g @anthropic-ai/claude-code
-```
-
-Add Ollama config to `~/.bashrc` (note: use `/v1` suffix for OpenAI-compatible endpoint):
-```bash
-echo -e '\n# Claude Code with Ollama Config\nexport ANTHROPIC_BASE_URL="http://localhost:11434/v1"\nexport ANTHROPIC_API_KEY="ollama"' >> ~/.bashrc && source ~/.bashrc
-```
-
-> ⚠️ Use `ANTHROPIC_API_KEY` (not `ANTHROPIC_AUTH_TOKEN`) and append `/v1` to the Ollama base URL for OpenAI-compatible routing.
+| RAM | Model | Pull command |
+|-----|-------|-------------|
+| 2 GB | TinyLlama 1.1B | `ollama pull tinyllama` |
+| 2–3 GB | Phi-3 Mini | `ollama pull phi3:mini` |
+| 3–4 GB | Gemma 2B | `ollama pull gemma:2b` |
+| 4+ GB | Nemotron Mini | `ollama pull nemotron-mini` |
 
 ---
-## Run Claude Code
+
+## 🧠 Claude Code
 
 ```bash
-claude --model nemotron-mini
+claude --model <model-name>
 ```
 
+Claude Code is pre-configured to use your local Ollama instance. The env vars in `~/.bashrc`:
+
+```bash
+export ANTHROPIC_BASE_URL="http://localhost:11434/v1"
+export ANTHROPIC_API_KEY="ollama"
+```
+
+> ⚠️ The `/v1` suffix is required — Ollama's OpenAI-compatible endpoint lives at `/v1`, not `/`.
+
 ---
-## OpenClaw Installation
+
+## 🦾 OpenClaw AI Agent
+
+Install standalone (if skipped during setup):
 
 ```bash
 curl -sL https://raw.githubusercontent.com/AbuZar-Ansarii/OpenClaudeLinux/main/openclaw.sh | bash
 ```
 
-## Onboarding
 ```bash
-openclaw onboard
+source ~/.bashrc
+openclaw onboard       # first-time setup
+openclaw gateway       # start the agent gateway
 ```
 
-## Start Gateway
-```bash
-openclaw gateway
-```
+Dashboard: `http://127.0.0.1:18789`
 
-## Get Gateway Token
+Get your gateway token:
 ```bash
 cat ~/.openclaw/openclaw.json
 ```
 
-## OpenClaw Dashboard
+---
+
+## 🔧 Manual Linux Desktop Install (Alternative)
+
+If you prefer the full interactive desktop installer from the community:
+
+```bash
+termux-setup-storage
+curl -O https://raw.githubusercontent.com/orailnoor/termux-linux-setup/main/termux-linux-setup.sh
+chmod +x termux-linux-setup.sh
+./termux-linux-setup.sh
 ```
-http://127.0.0.1:18789
+
+Then use this repo's `start-linux.sh` / `stop-linux.sh` for reliable X11 re-display.
+
+---
+
+## 🐛 Troubleshooting
+
+**X11 won't start / blank screen:**
+```bash
+./stop-linux.sh          # clears stale locks
+./start-linux.sh         # restart
 ```
+
+**`termux-x11` command not found:**
+```bash
+pkg install x11-repo -y && pkg install termux-x11-nightly -y
+```
+
+**Audio not working:**
+```bash
+pulseaudio --kill && pulseaudio --start --exit-idle-time=-1
+```
+
+**Claude Code can't connect to Ollama:**
+```bash
+ollama serve &           # make sure Ollama is running
+curl http://localhost:11434/v1/models   # verify endpoint
+```
+
+**Out of memory / OOM kills:**
+- Use `tinyllama` or `phi3:mini` instead of larger models
+- Close other Android apps before starting the desktop
+- Use `--no-ollama` flag during setup to skip Ollama entirely
