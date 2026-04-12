@@ -29,41 +29,42 @@ Run a full Linux desktop, Claude Code, Ollama LLMs, and OpenClaw AI agent native
 - **Ollama** — local LLM inference; lightweight models recommended for low-end devices
 - **OpenClaw** — autonomous AI agent with web dashboard
 - **PulseAudio** — audio support inside the desktop session
-- **Wine/Box64** — Windows app compatibility (via termux-linux-setup)
+- **Optional extras** — Firefox, VLC, Wine/Box64 for high-RAM devices
+- **Telegram remote control** — optional OpenClaw Telegram bot for device control
 
 ---
 
 ## 🚀 Quick Install (Recommended)
 
-Clone this repo and run the single setup script — it handles everything:
+### Step 1: Prepare Termux
 
 ```bash
 termux-setup-storage
 pkg install git -y
+```
+
+### Step 2: Clone & Run Setup
+
+```bash
 git clone https://github.com/Mundia-Brian/OpenClaudeLinux.git
 cd OpenClaudeLinux
 chmod +x setup.sh
 bash setup.sh
 ```
 
-The setup script auto-selects **LXQt** on 2 GB RAM devices. (Optionally) Override with:
+The setup script will:
+1. **Detect your RAM** and recommend a desktop environment
+2. **Ask you to choose features** (Ollama, Claude Code, OpenClaw)
+3. **Optionally install extras** (Firefox, VLC, Wine)
+4. **Generate start-linux.sh and stop-linux.sh** scripts
+
+### Step 3: Start the Desktop
 
 ```bash
-bash setup.sh --de xfce4          # XFCE4 (needs 3+ GB)
-```
-```bash
-bash setup.sh --de lxqt           # LXQt  (2 GB minimum, default)
-```
-```bash
-bash setup.sh --no-ollama         # skip Ollama (saves ~500 MB)
-```
-```bash
-bash setup.sh --no-openclaw       # skip OpenClaw
-```
-```bash
-bash setup.sh --de lxqt --no-ollama --no-openclaw   # minimal install
+./start-linux.sh
 ```
 
+Then **open the Termux:X11 app** to see your desktop.
 
 ---
 
@@ -71,8 +72,6 @@ bash setup.sh --de lxqt --no-ollama --no-openclaw   # minimal install
 
 ```bash
 ./start-linux.sh    # launches X11 + desktop, then open Termux:X11 app
-```
-```bash
 ./stop-linux.sh     # cleanly stops everything and removes X11 lock files
 ```
 
@@ -116,11 +115,13 @@ export ANTHROPIC_API_KEY="ollama"
 
 ## 🦾 OpenClaw AI Agent
 
-Install standalone (if skipped during setup):
+### Install (if skipped during setup)
 
 ```bash
-curl -sL https://raw.githubusercontent.com/AbuZar-Ansarii/OpenClaudeLinux/main/openclaw.sh | bash
+curl -sL https://raw.githubusercontent.com/Mundia-Brian/OpenClaudeLinux/main/openclaw.sh | bash
 ```
+
+### Start OpenClaw
 
 ```bash
 source ~/.bashrc
@@ -128,11 +129,79 @@ openclaw onboard       # first-time setup
 openclaw gateway       # start the agent gateway
 ```
 
-Dashboard: `http://127.0.0.1:18789`
+**Dashboard:** `http://127.0.0.1:18789`
 
-Get your gateway token:
+**Get your gateway token:**
 ```bash
 cat ~/.openclaw/openclaw.json
+```
+
+---
+
+## 📱 OpenClaw Telegram Remote Control (Optional)
+
+OpenClaw supports Telegram bot integration for remote device control. To enable:
+
+### 1. Create a Telegram Bot
+
+- Open Telegram and search for `@BotFather`
+- Send `/newbot` and follow the prompts
+- Copy your **Bot Token** (format: `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`)
+
+### 2. Run Telegram Setup Script
+
+```bash
+bash telegram-bot.sh
+```
+
+This will:
+- Prompt for your Bot Token
+- Ask for your Telegram User ID
+- Configure OpenClaw automatically
+
+### 3. Get Your Telegram User ID
+
+- Send any message to your bot
+- Visit: `https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates`
+- Find your `"id"` in the response
+
+### 4. Restart OpenClaw
+
+```bash
+openclaw gateway
+```
+
+Now you can control OpenClaw remotely via Telegram!
+
+---
+
+## 🔧 Advanced Setup Options
+
+### Auto Mode (Non-Interactive)
+
+```bash
+bash setup.sh --auto --de xfce4
+```
+
+### Skip Features
+
+```bash
+bash setup.sh --no-ollama         # skip Ollama
+bash setup.sh --no-claude         # skip Claude Code
+bash setup.sh --no-openclaw       # skip OpenClaw
+bash setup.sh --distro-extras     # install Firefox, Wine in distro
+```
+
+### Minimal Install (2 GB RAM)
+
+```bash
+bash setup.sh --auto --de lxqt --no-ollama --no-openclaw
+```
+
+### Full Install (6+ GB RAM)
+
+```bash
+bash setup.sh --auto --de xfce4 --distro-extras
 ```
 
 ---
@@ -154,29 +223,84 @@ Then use this repo's `start-linux.sh` / `stop-linux.sh` for reliable X11 re-disp
 
 ## 🐛 Troubleshooting
 
-**X11 won't start / blank screen:**
+### X11 won't start / blank screen
+
 ```bash
 ./stop-linux.sh          # clears stale locks
 ./start-linux.sh         # restart
 ```
 
-**`termux-x11` command not found:**
+### `termux-x11` command not found
+
 ```bash
 pkg install x11-repo -y && pkg install termux-x11-nightly -y
 ```
 
-**Audio not working:**
+### Audio not working
+
 ```bash
 pulseaudio --kill && pulseaudio --start --exit-idle-time=-1
 ```
 
-**Claude Code can't connect to Ollama:**
+### Claude Code can't connect to Ollama
+
 ```bash
 ollama serve &           # make sure Ollama is running
 curl http://localhost:11434/v1/models   # verify endpoint
 ```
 
-**Out of memory / OOM kills:**
+### Desktop environment won't start
+
+Ensure dbus is running:
+```bash
+dbus-launch bash
+```
+
+### Out of memory / OOM kills
+
 - Use `tinyllama` or `phi3:mini` instead of larger models
 - Close other Android apps before starting the desktop
 - Use `--no-ollama` flag during setup to skip Ollama entirely
+
+### X11 display shows but desktop is blank
+
+Check GPU config is loaded:
+```bash
+source ~/.config/linux-gpu.sh
+echo $GALLIUM_DRIVER
+```
+
+Should output: `zink`
+
+---
+
+## 📚 Architecture
+
+- **Termux** — native Android shell (Alpine-based package system)
+- **Desktop** — XFCE4/LXQt/MATE/KDE running natively in Termux
+- **X11** — Termux:X11 app provides display server
+- **GPU** — Zink (software) or Turnip (Adreno hardware acceleration)
+- **Audio** — PulseAudio over TCP
+- **AI** — Ollama (local LLMs) + Claude Code + OpenClaw
+
+---
+
+## 🤝 Contributing
+
+Issues and PRs welcome! This is a community fork of [AbuZar-Ansarii/OpenClaudeLinux](https://github.com/AbuZar-Ansarii/OpenClaudeLinux).
+
+---
+
+## 📄 License
+
+MIT — See LICENSE file
+
+---
+
+## 🙏 Credits
+
+- **Original repo:** [AbuZar-Ansarii/OpenClaudeLinux](https://github.com/AbuZar-Ansarii/OpenClaudeLinux)
+- **Desktop setup reference:** [orailnoor/termux-linux-setup](https://github.com/orailnoor/termux-linux-setup)
+- **Ollama:** [ollama.ai](https://ollama.ai)
+- **Claude Code:** [Anthropic](https://anthropic.com)
+- **OpenClaw:** [OpenClaw Hub](https://myopenclawhub.com)
