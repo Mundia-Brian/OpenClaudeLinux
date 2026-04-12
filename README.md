@@ -46,7 +46,7 @@ chmod +x setup.sh
 bash setup.sh
 ```
 
-The setup script auto-selects **LXQt** on 2 GB RAM devices. Override with:
+The setup script auto-selects **LXQt** on 2 GB RAM devices. (Optionally) Override with:
 
 ```bash
 bash setup.sh --de xfce4          # XFCE4 (needs 3+ GB)
