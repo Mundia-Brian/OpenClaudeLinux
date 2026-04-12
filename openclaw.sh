@@ -69,7 +69,10 @@ if command -v openclaw &>/dev/null || [ -d "$HOME/.openclaw/repo" ]; then
 else
     echo "📦 Step 3/3: Installing OpenClaw. This may take a moment..."
     # Running the official install script directly
-    bash -c "$(curl -sSL https://myopenclawhub.com/install)" < /dev/tty && source ~/.bashrc 2>/dev/null
+    INSTALL_SCRIPT="$(curl -sSL https://myopenclawhub.com/install)" || { echo "❌ Failed to fetch OpenClaw installer"; exit 1; }
+    bash -c "$INSTALL_SCRIPT" < /dev/tty
+    # shellcheck source=/dev/null
+    source ~/.bashrc 2>/dev/null
 fi
 
 # =========================================================================
