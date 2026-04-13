@@ -22,17 +22,14 @@ info() { echo "ℹ️  $*"; }
 warn() { echo "⚠️  $*"; }
 
 # ── Auto-detect installed desktop environment ─────────────────────────────
-# Prefer xfce4-session for proper session handling, fallback to startxfce4
-if   command -v xfce4-session &>/dev/null; then 
-    DE_EXEC="xfce4-session" 
-    DE_KILL="pkill -9 xfce4-session; pkill -9 plank"
-elif command -v startxfce4    &>/dev/null; then 
+# Use startxfce4 for simplicity (matches working reference script)
+if   command -v startxfce4 &>/dev/null; then 
     DE_EXEC="startxfce4" 
-    DE_KILL="pkill -9 xfce4-session; pkill -9 plank"
+    DE_KILL="pkill -9 xfce4-session; pkill -9 xfwm4; pkill -9 xfce4-panel; pkill -9 xfdesktop; pkill -9 plank"
 elif command -v startlxqt     &>/dev/null; then DE_EXEC="startlxqt";       DE_KILL="pkill -9 lxqt-session; pkill -9 openbox"
 elif command -v mate-session  &>/dev/null; then DE_EXEC="mate-session";    DE_KILL="pkill -9 mate-session"
 elif command -v startplasma-x11 &>/dev/null; then DE_EXEC="startplasma-x11"; DE_KILL="pkill -9 startplasma-x11; pkill -9 kwin_x11"
-elif command -v openbox       &>/dev/null; then DE_EXEC="openbox-session"; DE_KILL="pkill -9 openbox"
+elif command -v xfce4-session &>/dev/null; then DE_EXEC="xfce4-session";   DE_KILL="pkill -9 xfce4-session; pkill -9 plank"
 elif command -v xterm         &>/dev/null; then DE_EXEC="xterm";           DE_KILL="pkill -9 xterm"
 else
     die "No desktop environment found. Run: bash setup.sh"
@@ -158,41 +155,7 @@ echo ""
 info "Launching desktop environment: ${DE_EXEC}"
 
 # Force software rendering for better compatibility on mobile/devices
-export GALLIUM_DRIVER="llvmpipe" 2>/dev/null || true
-export LIBGL_ALWAYS_SOFTWARE=1 2>/dev/null || true
 export MESA_NO_ERROR=1
-
-# Disable compositor for simpler rendering
-export XFCE_COMPOSITOR_SETTING=false
-
-# For XFCE, try multiple launch methods
-if [[ "${DE_EXEC}" == "xfce4-session" || "${DE_EXEC}" == "startxfce4" ]]; then
-    # Kill any existing xfwm4 and restart cleanly
-    pkill -9 xfwm4 2>/dev/null || true
-    
-    # Disable compositing in xfconf
-    if command -v xfconf-query &>/dev/null; then
-        xfconf-query -c xfwm4 -p /general/use_compositing -s false 2>/dev/null || true
-    fi
-    
-    # Try starting with xfwm4 directly with simpler settings
-    if command -v xfwm4 &>/dev/null; then
-        info "Starting xfwm4 window manager..."
-        xfwm4 --daemon -- compositing=off 2>/dev/null &
-        sleep 1
-    fi
-    
-    # Start xfce4-panel in background if it doesn't start automatically
-    pkill -9 xfce4-panel 2>/dev/null || true
-    (sleep 5; pgrep -x xfce4-panel >/dev/null || xfce4-panel --daemon 2>/dev/null) &
-    
-    # Start desktop manager if not running
-    pkill -9 xfdesktop 2>/dev/null || true
-    (sleep 3; pgrep -x xfdesktop >/dev/null || xfdesktop 2>/dev/null) &
-    
-    # Start panel if still not visible
-    (sleep 8; xfce4-panel --reload 2>/dev/null) &
-fi
 
 # Start DBus if available
 if command -v dbus-launch &>/dev/null; then
