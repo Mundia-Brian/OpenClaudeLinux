@@ -14,7 +14,13 @@ info() { echo "ℹ️  $*"; }
 warn() { echo "⚠️  $*"; }
 
 # ── Auto-detect installed desktop environment ─────────────────────────────
-if   command -v xfce4-session &>/dev/null; then DE_EXEC="xfce4-session";   DE_KILL="pkill -9 xfce4-session; pkill -9 plank"
+# Prefer xfce4-session for proper session handling, fallback to startxfce4
+if   command -v xfce4-session &>/dev/null; then 
+    DE_EXEC="xfce4-session" 
+    DE_KILL="pkill -9 xfce4-session; pkill -9 plank"
+elif command -v startxfce4    &>/dev/null; then 
+    DE_EXEC="startxfce4" 
+    DE_KILL="pkill -9 xfce4-session; pkill -9 plank"
 elif command -v startlxqt     &>/dev/null; then DE_EXEC="startlxqt";       DE_KILL="pkill -9 lxqt-session; pkill -9 openbox"
 elif command -v mate-session  &>/dev/null; then DE_EXEC="mate-session";    DE_KILL="pkill -9 mate-session"
 elif command -v startplasma-x11 &>/dev/null; then DE_EXEC="startplasma-x11"; DE_KILL="pkill -9 startplasma-x11; pkill -9 kwin_x11"
