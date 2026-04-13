@@ -508,6 +508,10 @@ export PULSE_SERVER="127.0.0.1"
 
 source ~/.config/linux-gpu.sh 2>/dev/null || true
 
+export MESA_NO_ERROR="\${MESA_NO_ERROR:-1}"
+export XDG_DATA_DIRS="/data/data/com.termux/files/usr/share:\${XDG_DATA_DIRS:-}"
+export XDG_CONFIG_DIRS="/data/data/com.termux/files/usr/etc/xdg:\${XDG_CONFIG_DIRS:-}"
+
 if [[ "\${GALLIUM_DRIVER:-}" == "zink" ]]; then
     if ! command -v vulkaninfo &>/dev/null || ! vulkaninfo --summary >/dev/null 2>&1; then
         warn "Vulkan unavailable; disabling zink and falling back to software rendering"
@@ -523,6 +527,15 @@ sleep 3
 
 kill -0 "\$X11_PID" 2>/dev/null || die "termux-x11 failed. Open Termux:X11 app first."
 
+# Best-effort: foreground Termux:X11 app to complete connection
+am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
+
+# Wait for X socket availability before launching DE
+for _ in 1 2 3 4 5; do
+    [[ -S "/tmp/.X11-unix/X\${DISPLAY_NUM#:}" ]] && break
+    sleep 1
+done
+
 export DISPLAY="\${DISPLAY_NUM}"
 grep -q "^export DISPLAY=" ~/.bashrc 2>/dev/null && sed -i "s|^export DISPLAY=.*|export DISPLAY=\${DISPLAY_NUM}|" ~/.bashrc || echo "export DISPLAY=\${DISPLAY_NUM}" >> ~/.bashrc
 
@@ -531,6 +544,10 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "  ✅ Open Termux:X11 app to see your desktop!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
+
+if command -v dbus-launch &>/dev/null; then
+    eval "\$(dbus-launch --sh-syntax 2>/dev/null)"
+fi
 
 exec ${DE_EXEC}
 STARTEOF

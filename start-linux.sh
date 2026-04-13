@@ -11,9 +11,10 @@ DISPLAY_NUM=":0"
 
 die()  { echo "❌ $*" >&2; exit 1; }
 info() { echo "ℹ️  $*"; }
+warn() { echo "⚠️  $*"; }
 
 # ── Auto-detect installed desktop environment ─────────────────────────────
-if   command -v startxfce4    &>/dev/null; then DE_EXEC="startxfce4";      DE_KILL="pkill -9 xfce4-session; pkill -9 plank"
+if   command -v xfce4-session &>/dev/null; then DE_EXEC="xfce4-session";   DE_KILL="pkill -9 xfce4-session; pkill -9 plank"
 elif command -v startlxqt     &>/dev/null; then DE_EXEC="startlxqt";       DE_KILL="pkill -9 lxqt-session; pkill -9 openbox"
 elif command -v mate-session  &>/dev/null; then DE_EXEC="mate-session";    DE_KILL="pkill -9 mate-session"
 elif command -v startplasma-x11 &>/dev/null; then DE_EXEC="startplasma-x11"; DE_KILL="pkill -9 startplasma-x11; pkill -9 kwin_x11"
@@ -56,9 +57,16 @@ export PULSE_SERVER="127.0.0.1"
 source ~/.config/linux-gpu.sh 2>/dev/null || true
 # Fallback GPU vars if linux-gpu.sh missing (e.g. manual install)
 export MESA_NO_ERROR="${MESA_NO_ERROR:-1}"
-export GALLIUM_DRIVER="${GALLIUM_DRIVER:-zink}"
 export XDG_DATA_DIRS="/data/data/com.termux/files/usr/share:${XDG_DATA_DIRS:-}"
 export XDG_CONFIG_DIRS="/data/data/com.termux/files/usr/etc/xdg:${XDG_CONFIG_DIRS:-}"
+
+if [[ "${GALLIUM_DRIVER:-}" == "zink" ]]; then
+    if ! command -v vulkaninfo &>/dev/null || ! vulkaninfo --summary >/dev/null 2>&1; then
+        warn "Vulkan unavailable; disabling zink and falling back to software rendering"
+        unset GALLIUM_DRIVER MESA_LOADER_DRIVER_OVERRIDE ZINK_DESCRIPTORS TU_DEBUG MESA_VK_WSI_PRESENT_MODE
+        export LIBGL_ALWAYS_SOFTWARE=1
+    fi
+fi
 
 # ── Start Termux X11 ──────────────────────────────────────────────────────
 info "Starting X11 display ${DISPLAY_NUM}..."
@@ -67,6 +75,15 @@ X11_PID=$!
 sleep 3
 
 kill -0 "$X11_PID" 2>/dev/null || die "termux-x11 failed to start. Open the Termux:X11 app first, then retry."
+
+# Best-effort: foreground Termux:X11 app to complete connection
+am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
+
+# Wait for X socket availability before launching DE
+for _ in 1 2 3 4 5; do
+    [[ -S "/tmp/.X11-unix/X${DISPLAY_NUM#:}" ]] && break
+    sleep 1
+done
 
 export DISPLAY="${DISPLAY_NUM}"
 
@@ -83,4 +100,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ── Launch desktop ────────────────────────────────────────────────────────
+if command -v dbus-launch &>/dev/null; then
+    eval "$(dbus-launch --sh-syntax 2>/dev/null)"
+fi
+
 exec ${DE_EXEC}
