@@ -52,6 +52,7 @@ chmod +x setup.sh
 bash setup.sh
 ```
 
+<<<<<<< HEAD
 The setup script will:
 1. **Detect your RAM** and recommend a desktop environment
 2. **Ask you to choose features** (Ollama, Claude Code, OpenClaw)
@@ -59,6 +60,9 @@ The setup script will:
 4. **Generate start-linux.sh and stop-linux.sh** scripts
 
 ### Step 3: Start the Desktop
+=======
+The setup script auto-selects **LXQt** on 2 GB RAM devices. Override with:
+>>>>>>> parent of 833c8ad (Update README for setup script override instructions)
 
 ```bash
 ./start-linux.sh
