@@ -162,18 +162,36 @@ export GALLIUM_DRIVER="llvmpipe" 2>/dev/null || true
 export LIBGL_ALWAYS_SOFTWARE=1 2>/dev/null || true
 export MESA_NO_ERROR=1
 
+# Disable compositor for simpler rendering
+export XFCE_COMPOSITOR_SETTING=false
+
 # For XFCE, try multiple launch methods
 if [[ "${DE_EXEC}" == "xfce4-session" || "${DE_EXEC}" == "startxfce4" ]]; then
-    # Try starting with xfwm4 directly if session manager fails
-    if ! command -v xfwm4 &>/dev/null; then
-        warn "xfwm4 not found, XFCE may not display correctly"
+    # Kill any existing xfwm4 and restart cleanly
+    pkill -9 xfwm4 2>/dev/null || true
+    
+    # Disable compositing in xfconf
+    if command -v xfconf-query &>/dev/null; then
+        xfconf-query -c xfwm4 -p /general/use_compositing -s false 2>/dev/null || true
+    fi
+    
+    # Try starting with xfwm4 directly with simpler settings
+    if command -v xfwm4 &>/dev/null; then
+        info "Starting xfwm4 window manager..."
+        xfwm4 --daemon -- compositing=off 2>/dev/null &
+        sleep 1
     fi
     
     # Start xfce4-panel in background if it doesn't start automatically
+    pkill -9 xfce4-panel 2>/dev/null || true
     (sleep 5; pgrep -x xfce4-panel >/dev/null || xfce4-panel --daemon 2>/dev/null) &
     
     # Start desktop manager if not running
+    pkill -9 xfdesktop 2>/dev/null || true
     (sleep 3; pgrep -x xfdesktop >/dev/null || xfdesktop 2>/dev/null) &
+    
+    # Start panel if still not visible
+    (sleep 8; xfce4-panel --reload 2>/dev/null) &
 fi
 
 # Start DBus if available
