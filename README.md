@@ -61,7 +61,7 @@ The setup script will:
 ### Step 3: Start the Desktop
 
 The setup script auto-selects **LXQt** on 2 GB RAM devices. Override with:
-
+(Optional)
 ```bash
 bash setup.sh --auto --de xfce4
 ```
@@ -78,6 +78,8 @@ Then **open the Termux:X11 app** to see your desktop.
 
 ```bash
 ./start-linux.sh    # launches X11 + desktop, then open Termux:X11 app
+```
+```bash
 ./stop-linux.sh     # cleanly stops everything and removes X11 lock files
 ```
 
@@ -112,6 +114,9 @@ Claude Code is pre-configured to use your local Ollama instance. The env vars in
 
 ```bash
 export ANTHROPIC_BASE_URL="http://localhost:11434/v1"
+
+```
+```bash
 export ANTHROPIC_API_KEY="ollama"
 ```
 
@@ -132,6 +137,9 @@ curl -sL https://raw.githubusercontent.com/Mundia-Brian/OpenClaudeLinux/main/ope
 ```bash
 source ~/.bashrc
 openclaw onboard       # first-time setup
+```
+
+```bash
 openclaw gateway       # start the agent gateway
 ```
 
@@ -194,16 +202,52 @@ bash setup.sh --auto --de xfce4
 ```bash
 # Desktop mode
 bash setup.sh --no-ollama         # skip Ollama
+
+```
+
+```bash
 bash setup.sh --no-claude         # skip Claude Code
+
+```
+
+```bash
 bash setup.sh --no-openclaw       # skip OpenClaw
+
+```
+
+```bash
 bash setup.sh --distro-extras     # install Firefox, Wine
+
+```
+
+```bash
 bash setup.sh --telegram          # enable Telegram bot
+
+```
+
+```bash
 bash setup.sh --whatsapp          # enable WhatsApp bot
+
+```
+
+```bash
 bash setup.sh --mobile            # force mobile mode (no desktop)
 
+```
+
 # Mobile mode
+
+```bash
 bash setup-mobile.sh --no-ollama  # skip Ollama
+
+```
+
+```bash
 bash setup-mobile.sh --whatsapp   # enable WhatsApp
+
+```
+
+```bash
 bash setup-mobile.sh --telegram   # enable Telegram
 ```
 
@@ -212,7 +256,8 @@ bash setup-mobile.sh --telegram   # enable Telegram
 ```bash
 # Desktop mode
 bash setup.sh --auto --de lxqt --no-ollama --no-openclaw
-
+```
+```bash
 # Mobile mode (even lighter)
 bash setup-mobile.sh --no-ollama --no-openclaw
 ```
@@ -246,6 +291,10 @@ Then use this repo's `start-linux.sh` / `stop-linux.sh` for reliable X11 re-disp
 
 ```bash
 ./stop-linux.sh          # clears stale locks
+
+```
+
+```bash
 ./start-linux.sh         # restart
 ```
 
