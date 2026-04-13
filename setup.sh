@@ -22,7 +22,7 @@ DE=""
 SKIP_OLLAMA=0
 SKIP_CLAUDE=0
 SKIP_OPENCLAW=0
-INSTALL_EXTRAS=0
+INSTALL_EXTRAS=1
 INSTALL_WHATSAPP=0
 INSTALL_TELEGRAM=0
 USAGE_MODE="desktop"
@@ -229,7 +229,7 @@ pkg upgrade -y 2>/dev/null || warn "pkg upgrade warnings"
 pkg install -y x11-repo tur-repo 2>/dev/null || warn "repo warnings"
 pkg update -y 2>/dev/null
 
-pkg install -y termux-x11-nightly xorg-xrandr pulseaudio git curl wget nodejs npm python openssl which 2>/dev/null || warn "base pkg warnings"
+pkg install -y termux-x11-nightly xorg-xrandr pulseaudio git curl wget nodejs npm python openssl which xterm 2>/dev/null || warn "base pkg warnings"
 success "Base packages installed"
 
 # ── Step 2: Desktop Environment ───────────────────────────────────────────
@@ -270,16 +270,16 @@ success "${DE} installed"
 
 # ── Step 3: GPU acceleration ──────────────────────────────────────────────
 info "Step 3/7: Installing GPU acceleration..."
-pkg install -y mesa-zink vulkan-loader-android 2>/dev/null || warn "GPU warnings"
+pkg install -y mesa-zink vulkan-loader-android vulkan-tools 2>/dev/null || warn "GPU warnings"
 
-GPU_VENDOR=$(getprop ro.hardware.egl 2>/dev/null || echo "")
-if echo "$GPU_VENDOR" | grep -qi "adreno"; then
+GPU_INFO="$( (getprop ro.hardware.egl; getprop ro.hardware.vulkan; getprop ro.board.platform) 2>/dev/null | tr '[:upper:]' '[:lower:]' )"
+if echo "$GPU_INFO" | grep -qi "adreno"; then
     pkg install -y mesa-vulkan-icd-freedreno 2>/dev/null || warn "Turnip skipped"
-    GPU_DRIVER="freedreno"
-    success "Adreno GPU: Turnip enabled"
+    GPU_DRIVER="zink+turnip"
+    success "Adreno GPU detected: Zink + Turnip profile"
 else
-    GPU_DRIVER="zink"
-    success "Non-Adreno: Zink enabled"
+    GPU_DRIVER="auto"
+    warn "Non-Adreno/unknown GPU detected: enabling safe auto-fallback profile"
 fi
 
 mkdir -p ~/.config
@@ -296,17 +296,33 @@ KDEEOF
 fi
 
 cat > ~/.config/linux-gpu.sh << 'GPUEOF'
+#!/data/data/com.termux/files/usr/bin/bash
 export MESA_NO_ERROR=1
-export MESA_GL_VERSION_OVERRIDE=4.6
-export MESA_GLES_VERSION_OVERRIDE=3.2
-export GALLIUM_DRIVER=zink
-export MESA_LOADER_DRIVER_OVERRIDE=zink
-export TU_DEBUG=noconform
-export MESA_VK_WSI_PRESENT_MODE=immediate
-export ZINK_DESCRIPTORS=lazy
 export XDG_DATA_DIRS=/data/data/com.termux/files/usr/share:${XDG_DATA_DIRS:-}
 export XDG_CONFIG_DIRS=/data/data/com.termux/files/usr/etc/xdg:${XDG_CONFIG_DIRS:-}
+
+# Zink needs a working Vulkan physical device.
+# If Vulkan is unavailable, forcing zink causes: "zink: failed to choose pdev".
+if command -v vulkaninfo >/dev/null 2>&1 && vulkaninfo --summary >/dev/null 2>&1; then
+    export GALLIUM_DRIVER=zink
+    export MESA_LOADER_DRIVER_OVERRIDE=zink
+    export ZINK_DESCRIPTORS=lazy
+
+    GPU_INFO="$( (getprop ro.hardware.egl; getprop ro.hardware.vulkan; getprop ro.board.platform) 2>/dev/null | tr '[:upper:]' '[:lower:]' )"
+    if echo "$GPU_INFO" | grep -qi "adreno"; then
+        export TU_DEBUG=noconform
+        export MESA_VK_WSI_PRESENT_MODE=immediate
+    fi
+else
+    unset GALLIUM_DRIVER
+    unset MESA_LOADER_DRIVER_OVERRIDE
+    unset ZINK_DESCRIPTORS
+    unset TU_DEBUG
+    unset MESA_VK_WSI_PRESENT_MODE
+    export LIBGL_ALWAYS_SOFTWARE=1
+fi
 GPUEOF
+chmod +x ~/.config/linux-gpu.sh
 
 if [[ "$DE" == "kde" ]]; then
     echo "export KWIN_COMPOSE=O2ES" >> ~/.config/linux-gpu.sh
@@ -380,10 +396,11 @@ if [[ $INSTALL_EXTRAS -eq 1 ]]; then
     pkg install -y hangover-wine hangover-wowbox64 2>/dev/null || warn "Wine skipped"
 
     # Create Wine symlinks
-    if command -v wine &>/dev/null; then
-        ln -sf /data/data/com.termux/files/usr/opt/hangover-wine/bin/wine /data/data/com.termux/files/usr/bin/wine 2>/dev/null || true
-        ln -sf /data/data/com.termux/files/usr/opt/hangover-wine/bin/winecfg /data/data/com.termux/files/usr/bin/winecfg 2>/dev/null || true
-    fi
+    ln -sf /data/data/com.termux/files/usr/opt/hangover-wine/bin/wine /data/data/com.termux/files/usr/bin/wine 2>/dev/null || true
+    ln -sf /data/data/com.termux/files/usr/opt/hangover-wine/bin/winecfg /data/data/com.termux/files/usr/bin/winecfg 2>/dev/null || true
+
+    # Ensure terminal package exists in distro environment even if DE terminal fails
+    command -v xterm &>/dev/null || pkg install -y xterm 2>/dev/null || warn "xterm install skipped"
     success "Extras installed"
 fi
 
@@ -453,7 +470,7 @@ else
 fi
 
 
-# ── Step 7: Write start/stop scripts ──────────────────────────────────────
+# ── Step 9: Write start/stop scripts ──────────────────────────────────────
 info "Step 9/9: Writing start-linux.sh and stop-linux.sh..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -465,6 +482,7 @@ cat > "${SCRIPT_DIR}/start-linux.sh" << STARTEOF
 DISPLAY_NUM="${DISPLAY_NUM}"
 die()  { echo "❌ \$*" >&2; exit 1; }
 info() { echo "ℹ️  \$*"; }
+warn() { echo "⚠️  \$*"; }
 
 for cmd in termux-x11 pulseaudio ${DE_EXEC%% *}; do
     command -v "\$cmd" &>/dev/null || die "Missing: \$cmd"
@@ -489,6 +507,14 @@ pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymou
 export PULSE_SERVER="127.0.0.1"
 
 source ~/.config/linux-gpu.sh 2>/dev/null || true
+
+if [[ "\${GALLIUM_DRIVER:-}" == "zink" ]]; then
+    if ! command -v vulkaninfo &>/dev/null || ! vulkaninfo --summary >/dev/null 2>&1; then
+        warn "Vulkan unavailable; disabling zink and falling back to software rendering"
+        unset GALLIUM_DRIVER MESA_LOADER_DRIVER_OVERRIDE ZINK_DESCRIPTORS TU_DEBUG MESA_VK_WSI_PRESENT_MODE
+        export LIBGL_ALWAYS_SOFTWARE=1
+    fi
+fi
 
 info "Starting X11 display \${DISPLAY_NUM}..."
 termux-x11 "\${DISPLAY_NUM}" -ac &
