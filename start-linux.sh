@@ -85,8 +85,20 @@ export PULSE_SERVER="127.0.0.1"
 source ~/.config/linux-gpu.sh 2>/dev/null || true
 # Fallback GPU vars if linux-gpu.sh missing (e.g. manual install)
 export MESA_NO_ERROR="${MESA_NO_ERROR:-1}"
-export XDG_DATA_DIRS="/data/data/com.termux/files/usr/share:${XDG_DATA_DIRS:-}"
-export XDG_CONFIG_DIRS="/data/data/com.termux/files/usr/etc/xdg:${XDG_CONFIG_DIRS:-}"
+
+# Set XDG paths conditionally based on environment
+if [[ $IS_TERMUX -eq 1 ]]; then
+    export XDG_DATA_DIRS="/data/data/com.termux/files/usr/share:${XDG_DATA_DIRS:-}"
+    export XDG_CONFIG_DIRS="/data/data/com.termux/files/usr/etc/xdg:${XDG_CONFIG_DIRS:-}"
+    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/data/data/com.termux/files/usr/tmp/runtime-$(id -u)}"
+else
+    export XDG_DATA_DIRS="/usr/share:${XDG_DATA_DIRS:-}"
+    export XDG_CONFIG_DIRS="/etc/xdg:${XDG_CONFIG_DIRS:-}"
+    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-$(id -u)}"
+fi
+
+mkdir -p "${XDG_RUNTIME_DIR}" 2>/dev/null || true
+chmod 700 "${XDG_RUNTIME_DIR}" 2>/dev/null || true
 
 if [[ "${GALLIUM_DRIVER:-}" == "zink" ]]; then
     if ! command -v vulkaninfo &>/dev/null || ! vulkaninfo --summary >/dev/null 2>&1; then
