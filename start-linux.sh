@@ -1,11 +1,19 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
 # =========================================================================
-# 🚀 start-linux.sh — Start native Termux Linux desktop with X11
+# 🚀 start-linux.sh — Start Linux desktop with X11
 # =========================================================================
-# Runs NATIVELY in Termux — no proot-distro required.
-# Compatible with: termux-linux-setup (github.com/orailnoor/termux-linux-setup)
-# Fixes: X11 not re-displaying after stop-linux.sh
+# Runs on desktop Linux and Termux (proot)
+# Compatible with: XFCE, LXQt, MATE, KDE
 # =========================================================================
+
+# Detect if running in Termux
+if [[ -d "/data/data/com.termux/files/usr" ]]; then
+    IS_TERMUX=1
+    TERMUX_PREFIX="/data/data/com.termux/files/usr"
+else
+    IS_TERMUX=0
+    TERMUX_PREFIX=""
+fi
 
 DISPLAY_NUM=":0"
 
@@ -33,8 +41,10 @@ fi
 info "Desktop: ${DE_EXEC}"
 
 # ── Dependency check ──────────────────────────────────────────────────────
-command -v termux-x11  &>/dev/null || die "termux-x11 not found. Run: pkg install termux-x11-nightly"
-command -v pulseaudio  &>/dev/null || die "pulseaudio not found. Run: pkg install pulseaudio"
+if [[ $IS_TERMUX -eq 1 ]]; then
+    command -v termux-x11  &>/dev/null || die "termux-x11 not found. Run: pkg install termux-x11-nightly"
+    command -v pulseaudio  &>/dev/null || die "pulseaudio not found. Run: pkg install pulseaudio"
+fi
 
 # ── Clean up stale session ────────────────────────────────────────────────
 info "Cleaning up previous session..."
@@ -86,16 +96,19 @@ if [[ "${GALLIUM_DRIVER:-}" == "zink" ]]; then
     fi
 fi
 
-# ── Start Termux X11 ──────────────────────────────────────────────────────
-info "Starting X11 display ${DISPLAY_NUM}..."
-termux-x11 "${DISPLAY_NUM}" -ac &
-X11_PID=$!
-sleep 3
-
-kill -0 "$X11_PID" 2>/dev/null || die "termux-x11 failed to start. Open the Termux:X11 app first, then retry."
-
-# Best-effort: foreground Termux:X11 app to complete connection
-am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
+# ── Start X11 ───────────────────────────────────────────────────────────
+if [[ $IS_TERMUX -eq 1 ]]; then
+    # Start Termux X11 in background
+    info "Starting X11 display ${DISPLAY_NUM}..."
+    termux-x11 "${DISPLAY_NUM}" -ac &
+    X11_PID=$!
+    sleep 3
+    
+    kill -0 "$X11_PID" 2>/dev/null || die "termux-x11 failed to start. Open the Termux:X11 app first, then retry."
+    
+    # Best-effort: foreground Termux:X11 app to complete connection
+    am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
+fi
 
 # Wait for X socket availability before launching DE
 info "Waiting for X server to be ready..."
