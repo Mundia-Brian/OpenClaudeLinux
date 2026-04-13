@@ -92,10 +92,26 @@ kill -0 "$X11_PID" 2>/dev/null || die "termux-x11 failed to start. Open the Term
 am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
 
 # Wait for X socket availability before launching DE
-for _ in 1 2 3 4 5; do
-    [[ -S "/tmp/.X11-unix/X${DISPLAY_NUM#:}" ]] && break
+info "Waiting for X server to be ready..."
+for i in 1 2 3 4 5 6 7 8 9 10; do
+    if [[ -S "/tmp/.X11-unix/X${DISPLAY_NUM#:}" ]]; then
+        # Verify X is responding
+        if command -v xdpyinfo &>/dev/null; then
+            xdpyinfo -display "${DISPLAY_NUM}" >/dev/null 2>&1 && break
+        else
+            # If xdpyinfo not available, just check socket age
+            [[ -S "/tmp/.X11-unix/X${DISPLAY_NUM#:}" ]] && sleep 1 && break
+        fi
+    fi
     sleep 1
 done
+
+# Final verification
+if [[ -S "/tmp/.X11-unix/X${DISPLAY_NUM#:}" ]]; then
+    info "X server is ready on ${DISPLAY_NUM}"
+else
+    warn "X socket not found - starting without X11, will use existing display if available"
+fi
 
 export DISPLAY="${DISPLAY_NUM}"
 

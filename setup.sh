@@ -541,10 +541,23 @@ kill -0 "\$X11_PID" 2>/dev/null || die "termux-x11 failed. Open Termux:X11 app f
 am start -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1 || true
 
 # Wait for X socket availability before launching DE
-for _ in 1 2 3 4 5; do
-    [[ -S "/tmp/.X11-unix/X\${DISPLAY_NUM#:}" ]] && break
+info "Waiting for X server to be ready..."
+for i in 1 2 3 4 5 6 7 8 9 10; do
+    if [[ -S "/tmp/.X11-unix/X\${DISPLAY_NUM#:}" ]]; then
+        if command -v xdpyinfo &>/dev/null; then
+            xdpyinfo -display "\${DISPLAY_NUM}" >/dev/null 2>&1 && break
+        else
+            [[ -S "/tmp/.X11-unix/X\${DISPLAY_NUM#:}" ]] && sleep 1 && break
+        fi
+    fi
     sleep 1
 done
+
+if [[ -S "/tmp/.X11-unix/X\${DISPLAY_NUM#:}" ]]; then
+    info "X server is ready on \${DISPLAY_NUM}"
+else
+    warn "X socket not found - starting without X11 verification"
+fi
 
 export DISPLAY="\${DISPLAY_NUM}"
 grep -q "^export DISPLAY=" ~/.bashrc 2>/dev/null && sed -i "s|^export DISPLAY=.*|export DISPLAY=\${DISPLAY_NUM}|" ~/.bashrc || echo "export DISPLAY=\${DISPLAY_NUM}" >> ~/.bashrc
