@@ -62,10 +62,6 @@ if [[ "${DE_EXEC}" == "xfce4-session" ]]; then
     export DESKTOP_SESSION="xfce"
 fi
 
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/data/data/com.termux/files/usr/tmp/runtime-$(id -u)}"
-mkdir -p "${XDG_RUNTIME_DIR}" 2>/dev/null || true
-chmod 700 "${XDG_RUNTIME_DIR}" 2>/dev/null || true
-
 # Remove stale X11 lock/socket files — this is the root cause of re-display failure
 rm -f "/tmp/.X${DISPLAY_NUM#:}-lock"
 rm -f "/tmp/.X11-unix/X${DISPLAY_NUM#:}"
