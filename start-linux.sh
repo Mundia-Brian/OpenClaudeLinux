@@ -53,8 +53,8 @@ export PULSE_SERVER="127.0.0.1"
 
 # ── GPU environment ───────────────────────────────────────────────────────
 # shellcheck source=/dev/null
-source ~/.config/ocl-gpu.sh 2>/dev/null || true
-# Fallback GPU vars if ocl-gpu.sh missing (e.g. manual install)
+source ~/.config/linux-gpu.sh 2>/dev/null || true
+# Fallback GPU vars if linux-gpu.sh missing (e.g. manual install)
 export MESA_NO_ERROR="${MESA_NO_ERROR:-1}"
 export GALLIUM_DRIVER="${GALLIUM_DRIVER:-zink}"
 export XDG_DATA_DIRS="/data/data/com.termux/files/usr/share:${XDG_DATA_DIRS:-}"

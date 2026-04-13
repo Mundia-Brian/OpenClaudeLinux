@@ -5,13 +5,11 @@
 # Usage: bash setup.sh [--auto] [--de lxqt|xfce4|mate|kde] [--no-ollama] [--no-claude] [--no-openclaw]
 # =========================================================================
 
-set -euo pipefail
 
 # ── Colors ────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
@@ -25,6 +23,10 @@ SKIP_OLLAMA=0
 SKIP_CLAUDE=0
 SKIP_OPENCLAW=0
 INSTALL_EXTRAS=0
+INSTALL_WHATSAPP=0
+INSTALL_TELEGRAM=0
+USAGE_MODE="desktop"
+SKIP_DESKTOP=0
 DISPLAY_NUM=":0"
 
 # ── Arg parsing ───────────────────────────────────────────────────────────
@@ -35,6 +37,11 @@ while [[ $# -gt 0 ]]; do
         --no-ollama)   SKIP_OLLAMA=1;   shift ;;
         --no-claude)   SKIP_CLAUDE=1;   shift ;;
         --no-openclaw) SKIP_OPENCLAW=1; shift ;;
+        --distro-extras) INSTALL_EXTRAS=1; shift ;;
+        --whatsapp)    INSTALL_WHATSAPP=1; shift ;;
+        --telegram)    INSTALL_TELEGRAM=1; shift ;;
+        --mobile)      USAGE_MODE="mobile"; SKIP_DESKTOP=1; shift ;;
+        --desktop)     USAGE_MODE="desktop"; SKIP_DESKTOP=0; shift ;;
         *) echo "Unknown: $1"; shift ;;
     esac
 done
@@ -233,23 +240,28 @@ case "$DE" in
         pkg install -y lxqt qterminal pcmanfm-qt featherpad 2>/dev/null || warn "LXQt warnings"
         DE_EXEC="startlxqt"
         DE_KILL="pkill -9 lxqt-session 2>/dev/null; pkill -9 openbox 2>/dev/null"
+        TERM_CMD="qterminal"
         ;;
     xfce4)
         pkg install -y xfce4 xfce4-terminal xfce4-whiskermenu-plugin thunar mousepad 2>/dev/null || warn "XFCE4 warnings"
         pkg install -y plank-reloaded 2>/dev/null || warn "Plank skipped"
         DE_EXEC="startxfce4"
         DE_KILL="pkill -9 xfce4-session 2>/dev/null; pkill -9 plank 2>/dev/null"
+        TERM_CMD="xfce4-terminal"
         ;;
     mate)
-        pkg install -y mate-desktop mate-terminal 2>/dev/null || warn "MATE warnings"
+        pkg install -y mate mate-terminal mate-tweak 2>/dev/null || warn "MATE warnings"
+        pkg install -y plank-reloaded 2>/dev/null || warn "Plank skipped"
         DE_EXEC="mate-session"
-        DE_KILL="pkill -9 mate-session 2>/dev/null"
+        DE_KILL="pkill -9 mate-session 2>/dev/null; pkill -9 plank 2>/dev/null"
+        TERM_CMD="mate-terminal"
         ;;
     kde)
         [[ $TOTAL_RAM_MB -lt 4096 ]] && warn "KDE on <4GB RAM may crash!"
-        pkg install -y kde-plasma 2>/dev/null || die "KDE install failed"
-        DE_EXEC="startplasma-x11"
+        pkg install -y plasma-desktop konsole dolphin 2>/dev/null || die "KDE install failed"
+        DE_EXEC="(sleep 5 && pkill -9 plasmashell && plasmashell) > /dev/null 2>&1 &\nexec startplasma-x11"
         DE_KILL="pkill -9 startplasma-x11 2>/dev/null; pkill -9 kwin_x11 2>/dev/null"
+        TERM_CMD="konsole"
         ;;
     *) die "Unknown DE: $DE" ;;
 esac
@@ -271,7 +283,19 @@ else
 fi
 
 mkdir -p ~/.config
-cat > ~/.config/ocl-gpu.sh << 'GPUEOF'
+
+# KDE needs special XDG injection
+if [[ "$DE" == "kde" ]]; then
+    mkdir -p ~/.config/plasma-workspace/env
+    cat > ~/.config/plasma-workspace/env/xdg_fix.sh << 'KDEEOF'
+#!/data/data/com.termux/files/usr/bin/bash
+export XDG_DATA_DIRS=/data/data/com.termux/files/usr/share:${XDG_DATA_DIRS}
+export XDG_CONFIG_DIRS=/data/data/com.termux/files/usr/etc/xdg:${XDG_CONFIG_DIRS}
+KDEEOF
+    chmod +x ~/.config/plasma-workspace/env/xdg_fix.sh
+fi
+
+cat > ~/.config/linux-gpu.sh << 'GPUEOF'
 export MESA_NO_ERROR=1
 export MESA_GL_VERSION_OVERRIDE=4.6
 export MESA_GLES_VERSION_OVERRIDE=3.2
@@ -283,6 +307,15 @@ export ZINK_DESCRIPTORS=lazy
 export XDG_DATA_DIRS=/data/data/com.termux/files/usr/share:${XDG_DATA_DIRS:-}
 export XDG_CONFIG_DIRS=/data/data/com.termux/files/usr/etc/xdg:${XDG_CONFIG_DIRS:-}
 GPUEOF
+
+if [[ "$DE" == "kde" ]]; then
+    echo "export KWIN_COMPOSE=O2ES" >> ~/.config/linux-gpu.sh
+else
+    cat >> ~/.config/linux-gpu.sh << 'XDGEOF'
+export XDG_DATA_DIRS=/data/data/com.termux/files/usr/share:${XDG_DATA_DIRS:-}
+export XDG_CONFIG_DIRS=/data/data/com.termux/files/usr/etc/xdg:${XDG_CONFIG_DIRS:-}
+XDGEOF
+fi
 
 # ── Step 4: Ollama ────────────────────────────────────────────────────────
 if [[ $SKIP_OLLAMA -eq 0 ]]; then
@@ -343,12 +376,85 @@ fi
 if [[ $INSTALL_EXTRAS -eq 1 ]]; then
     info "Installing extras (Firefox, VLC, Wine)..."
     pkg install -y firefox vlc 2>/dev/null || warn "Firefox/VLC warnings"
-    pkg install -y hangover-wine 2>/dev/null || warn "Wine skipped"
+    pkg remove wine-stable -y 2>/dev/null || true
+    pkg install -y hangover-wine hangover-wowbox64 2>/dev/null || warn "Wine skipped"
+
+    # Create Wine symlinks
+    if command -v wine &>/dev/null; then
+        ln -sf /data/data/com.termux/files/usr/opt/hangover-wine/bin/wine /data/data/com.termux/files/usr/bin/wine 2>/dev/null || true
+        ln -sf /data/data/com.termux/files/usr/opt/hangover-wine/bin/winecfg /data/data/com.termux/files/usr/bin/winecfg 2>/dev/null || true
+    fi
     success "Extras installed"
 fi
 
+# ── Step 7: Desktop shortcuts ────────────────────────────────────────
+if [[ $INSTALL_EXTRAS -eq 1 && $SKIP_DESKTOP -eq 0 ]]; then
+    info "Creating desktop shortcuts..."
+    mkdir -p ~/Desktop
+    
+    # Firefox
+    cat > ~/Desktop/Firefox.desktop << 'FFEOF'
+[Desktop Entry]
+Name=Firefox
+Exec=firefox
+Icon=firefox
+Type=Application
+FFEOF
+    
+    # VLC
+    cat > ~/Desktop/VLC.desktop << 'VLCEOF'
+[Desktop Entry]
+Name=VLC Media Player
+Exec=vlc
+Icon=vlc
+Type=Application
+VLCEOF
+    
+    # Wine Config
+    if command -v wine &>/dev/null; then
+        cat > ~/Desktop/Wine_Config.desktop << 'WINEEOF'
+[Desktop Entry]
+Name=Wine Config (Windows)
+Exec=wine winecfg
+Icon=wine
+Type=Application
+WINEEOF
+    fi
+    
+    # Terminal (dynamic per DE)
+    cat > ~/Desktop/Terminal.desktop << TERMEOF
+[Desktop Entry]
+Name=Terminal
+Exec=${TERM_CMD}
+Icon=utilities-terminal
+Type=Application
+TERMEOF
+    
+    chmod +x ~/Desktop/*.desktop 2>/dev/null
+    success "Desktop shortcuts created"
+fi
+
+# ── Step 8: Plank autostart (XFCE/MATE) ───────────────────────────────
+if [[ $SKIP_DESKTOP -eq 0 && ( "$DE" == "xfce4" || "$DE" == "mate" ) ]]; then
+    info "Configuring Plank dock autostart..."
+    mkdir -p ~/.config/autostart
+    cat > ~/.config/autostart/plank.desktop << 'PLANKEOF'
+[Desktop Entry]
+Type=Application
+Exec=plank
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Plank
+PLANKEOF
+    success "Plank autostart configured"
+else
+    rm -f ~/.config/autostart/plank.desktop 2>/dev/null || true
+fi
+
+
 # ── Step 7: Write start/stop scripts ──────────────────────────────────────
-info "Step 7/7: Writing start-linux.sh and stop-linux.sh..."
+info "Step 9/9: Writing start-linux.sh and stop-linux.sh..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -382,7 +488,7 @@ sleep 1
 pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1 2>/dev/null || true
 export PULSE_SERVER="127.0.0.1"
 
-source ~/.config/ocl-gpu.sh 2>/dev/null || true
+source ~/.config/linux-gpu.sh 2>/dev/null || true
 
 info "Starting X11 display \${DISPLAY_NUM}..."
 termux-x11 "\${DISPLAY_NUM}" -ac &
@@ -473,6 +579,18 @@ if [[ $SKIP_OPENCLAW -eq 0 ]]; then
     echo -e "  ${WHITE}openclaw onboard${NC}"
     echo -e "  ${WHITE}openclaw gateway${NC}"
     echo -e "  Dashboard: ${WHITE}http://127.0.0.1:18789${NC}"
+    echo ""
+fi
+
+if [[ $INSTALL_TELEGRAM -eq 1 ]]; then
+    echo -e "${CYAN}Telegram Bot:${NC}"
+    echo -e "  ${WHITE}bash telegram-bot.sh${NC}  — Setup Telegram integration"
+    echo ""
+fi
+
+if [[ $INSTALL_WHATSAPP -eq 1 ]]; then
+    echo -e "${CYAN}WhatsApp Bot:${NC}"
+    echo -e "  ${WHITE}bash whatsapp-bot.sh${NC}  — Setup WhatsApp integration"
     echo ""
 fi
 

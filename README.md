@@ -186,16 +186,29 @@ bash setup.sh --auto --de xfce4
 ### Skip Features
 
 ```bash
+# Desktop mode
 bash setup.sh --no-ollama         # skip Ollama
 bash setup.sh --no-claude         # skip Claude Code
 bash setup.sh --no-openclaw       # skip OpenClaw
-bash setup.sh --distro-extras     # install Firefox, Wine in distro
+bash setup.sh --distro-extras     # install Firefox, Wine
+bash setup.sh --telegram          # enable Telegram bot
+bash setup.sh --whatsapp          # enable WhatsApp bot
+bash setup.sh --mobile            # force mobile mode (no desktop)
+
+# Mobile mode
+bash setup-mobile.sh --no-ollama  # skip Ollama
+bash setup-mobile.sh --whatsapp   # enable WhatsApp
+bash setup-mobile.sh --telegram   # enable Telegram
 ```
 
 ### Minimal Install (2 GB RAM)
 
 ```bash
+# Desktop mode
 bash setup.sh --auto --de lxqt --no-ollama --no-openclaw
+
+# Mobile mode (even lighter)
+bash setup-mobile.sh --no-ollama --no-openclaw
 ```
 
 ### Full Install (6+ GB RAM)

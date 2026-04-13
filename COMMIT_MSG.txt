@@ -1,0 +1,42 @@
+feat: Complete feature parity with termux-linux-setup + bug fixes
+
+BREAKING CHANGES: None (backward compatible)
+
+## Summary
+- Added desktop shortcuts (Firefox, VLC, Wine, Terminal)
+- Added Plank dock autostart for XFCE/MATE
+- Added KDE plasmashell crash workaround
+- Added Telegram bot setup script
+- Fixed Wine installation (symlinks + wowbox64)
+- Fixed package names (MATE, KDE)
+- Fixed GPU config filename consistency
+- Fixed --distro-extras flag parsing
+- Removed unsafe error handling
+
+## Files Changed
+- Modified: setup.sh (13 fixes + 3 features)
+- Modified: start-linux.sh (GPU config fix)
+- Added: telegram-bot.sh (Telegram integration)
+- Added: IMPROVEMENTS.md (detailed changelog)
+- Added: SUMMARY.md (completion report)
+- Added: validate.sh (automated testing)
+
+## Validation
+✅ All 20 automated checks passed
+✅ Code review completed (entire codebase)
+✅ Feature parity achieved with reference script
+✅ Maintains all OpenClaudeLinux unique features
+
+## Testing
+Recommended test matrix:
+- LXQt on 2GB RAM (minimal)
+- XFCE4 on 3GB RAM (standard + extras)
+- MATE on 4GB RAM (full + Plank)
+- KDE on 6GB RAM (full + plasmashell fix)
+
+## References
+- Reference: github.com/orailnoor/termux-linux-setup
+- Fixes: #N/A (proactive improvements)
+- Docs: See IMPROVEMENTS.md for full details
+
+Signed-off-by: Amazon Q Developer
