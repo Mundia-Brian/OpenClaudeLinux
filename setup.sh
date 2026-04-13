@@ -245,7 +245,7 @@ case "$DE" in
     xfce4)
         pkg install -y xfce4 xfce4-terminal xfce4-whiskermenu-plugin thunar mousepad 2>/dev/null || warn "XFCE4 warnings"
         pkg install -y plank-reloaded 2>/dev/null || warn "Plank skipped"
-        DE_EXEC="startxfce4"
+        DE_EXEC="xfce4-session"
         DE_KILL="pkill -9 xfce4-session 2>/dev/null; pkill -9 plank 2>/dev/null"
         TERM_CMD="xfce4-terminal"
         ;;
@@ -492,7 +492,6 @@ info "Cleaning up previous session..."
 pkill -9 -f "termux.x11" 2>/dev/null
 pkill -9 -f "termux-x11" 2>/dev/null
 ${DE_KILL}
-pkill -9 -f "dbus-daemon" 2>/dev/null
 sleep 1
 
 rm -f /tmp/.X\${DISPLAY_NUM#:}-lock
@@ -511,6 +510,17 @@ source ~/.config/linux-gpu.sh 2>/dev/null || true
 export MESA_NO_ERROR="\${MESA_NO_ERROR:-1}"
 export XDG_DATA_DIRS="/data/data/com.termux/files/usr/share:\${XDG_DATA_DIRS:-}"
 export XDG_CONFIG_DIRS="/data/data/com.termux/files/usr/etc/xdg:\${XDG_CONFIG_DIRS:-}"
+export XDG_RUNTIME_DIR="\${XDG_RUNTIME_DIR:-/data/data/com.termux/files/usr/tmp/runtime-\$(id -u)}"
+mkdir -p "\${XDG_RUNTIME_DIR}" 2>/dev/null || true
+chmod 700 "\${XDG_RUNTIME_DIR}" 2>/dev/null || true
+
+if [[ "${DE}" == "xfce4" ]]; then
+    export XDG_SESSION_TYPE="x11"
+    export XDG_SESSION_CLASS="user"
+    export XDG_CURRENT_DESKTOP="XFCE"
+    export XDG_SESSION_DESKTOP="xfce"
+    export DESKTOP_SESSION="xfce"
+fi
 
 if [[ "\${GALLIUM_DRIVER:-}" == "zink" ]]; then
     if ! command -v vulkaninfo &>/dev/null || ! vulkaninfo --summary >/dev/null 2>&1; then
@@ -546,7 +556,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 if command -v dbus-launch &>/dev/null; then
-    eval "\$(dbus-launch --sh-syntax 2>/dev/null)"
+    eval "\$(dbus-launch --sh-syntax --exit-with-session 2>/dev/null)"
 fi
 
 exec ${DE_EXEC}

@@ -35,8 +35,20 @@ info "Cleaning up previous session..."
 pkill -9 -f "termux.x11"  2>/dev/null
 pkill -9 -f "termux-x11"  2>/dev/null
 eval "$DE_KILL"            2>/dev/null
-pkill -9 -f "dbus-daemon"  2>/dev/null
 sleep 1
+
+# Ensure XDG directories exist for XFCE
+if [[ "${DE_EXEC}" == "xfce4-session" ]]; then
+    export XDG_SESSION_TYPE="x11"
+    export XDG_SESSION_CLASS="user"
+    export XDG_CURRENT_DESKTOP="XFCE"
+    export XDG_SESSION_DESKTOP="xfce"
+    export DESKTOP_SESSION="xfce"
+fi
+
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/data/data/com.termux/files/usr/tmp/runtime-$(id -u)}"
+mkdir -p "${XDG_RUNTIME_DIR}" 2>/dev/null || true
+chmod 700 "${XDG_RUNTIME_DIR}" 2>/dev/null || true
 
 # Remove stale X11 lock/socket files — this is the root cause of re-display failure
 rm -f "/tmp/.X${DISPLAY_NUM#:}-lock"
@@ -101,7 +113,7 @@ echo ""
 
 # ── Launch desktop ────────────────────────────────────────────────────────
 if command -v dbus-launch &>/dev/null; then
-    eval "$(dbus-launch --sh-syntax 2>/dev/null)"
+    eval "$(dbus-launch --sh-syntax --exit-with-session 2>/dev/null)"
 fi
 
 exec ${DE_EXEC}
