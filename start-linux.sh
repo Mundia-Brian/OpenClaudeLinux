@@ -155,8 +155,40 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ── Launch desktop ────────────────────────────────────────────────────────
-if command -v dbus-launch &>/dev/null; then
-    eval "$(dbus-launch --sh-syntax --exit-with-session 2>/dev/null)"
+info "Launching desktop environment: ${DE_EXEC}"
+
+# Force software rendering for better compatibility on mobile/devices
+export GALLIUM_DRIVER="llvmpipe" 2>/dev/null || true
+export LIBGL_ALWAYS_SOFTWARE=1 2>/dev/null || true
+export MESA_NO_ERROR=1
+
+# For XFCE, try multiple launch methods
+if [[ "${DE_EXEC}" == "xfce4-session" || "${DE_EXEC}" == "startxfce4" ]]; then
+    # Try starting with xfwm4 directly if session manager fails
+    if ! command -v xfwm4 &>/dev/null; then
+        warn "xfwm4 not found, XFCE may not display correctly"
+    fi
+    
+    # Start xfce4-panel in background if it doesn't start automatically
+    (sleep 5; pgrep -x xfce4-panel >/dev/null || xfce4-panel --daemon 2>/dev/null) &
+    
+    # Start desktop manager if not running
+    (sleep 3; pgrep -x xfdesktop >/dev/null || xfdesktop 2>/dev/null) &
 fi
 
+# Start DBus if available
+if command -v dbus-launch &>/dev/null; then
+    eval "$(dbus-launch --sh-syntax --exit-with-session 2>/dev/null)" || true
+fi
+
+# Launch the desktop environment
 exec ${DE_EXEC}
+
+# If exec fails (shouldn't happen), try fallback
+warn "Desktop launch completed, but may have exited early"
+
+# Final fallback: start xterm at minimum
+if command -v xterm &>/dev/null; then
+    info "Starting fallback terminal..."
+    exec xterm
+fi
